@@ -8,15 +8,15 @@ class PH_ABE(ABEnc):
 
     def __init__(self, n, assump_size, group_obj, math):
         ABEnc.__init__(self)
-        self._group = group_obj
-        self._n = n
-        self._assump_size = assump_size
-        self._math = math
+        self.group = group_obj
+        self.n = n
+        self.assump_size = assump_size
+        self.math = math
 
     
     def setup(self):
-        k = self._assump_size
-        group = self._group
+        k = self.assump_size
+        group = self.group
 
         # Generate Pub Param
         A = []
@@ -68,14 +68,7 @@ class PH_ABE(ABEnc):
     def auth_setup(self, pp):
         pks = {}
         sks = {}
-        group = self._group
-        k = self._assump_size
-        n = self._n
-
-        g = pp['g_1']
-        h = pp['g_2']
-        e_gh = pp['e_g1_g2']
-        g_A = pp['g_1^A']
+        n = self.n
 
         for i in range(n):
             pk, sk = self._gen_pk_sk(pp)
@@ -83,10 +76,55 @@ class PH_ABE(ABEnc):
             sks[str(i+1)] = sk
 
         return pks, sks
+
+    # pp: global public key
+    # pks: a set of AA's public keys
+    # vec_x: vector used as access policy 
+    # M: plain text
+    def encrypt(self, pp, pks, vec_x, M):
+        k = self.assump_size
+        group = self.group
+        n = len(pks)
+
+        g = pp['g_1']
+        g_A = pp['g_1^A']
+        g_UTA = pp['g_1^{U^T A}']
+
+        vec_s = []
+        for i in range(k):
+            vec_s.append(group.random(ZR))
+
+        C_0 = []
+        for i in range(k):
+            C_0.append(g_A[i] ** vec_s[i])
+        C_0.append(g ** sum(vec_s)) #k + 1 entry
+
+        C_i = []
+        for i in range(n):
+            g_XTA = pks[str(i+1)]['g_1^{X^T A}']
+            g_UTAs = self.math.power_mul(g_UTA, vec_s, type='m_vector')
+            
+            if vec_x[i] != 0:
+                tmp = self.math.power_mul(g_UTAs, vec_x[i], type = 'v_scalar')
+            else:
+                tmp = [1] * (k+1)
+                
+            tmp2 = self.math.power_mul(g_XTA, vec_s, type = 'm_vector')
+            C_i.append([x * y for x,y in zip(tmp, tmp2)])
+
+        C_ = M
+
+        for i in range(n):
+            e_gh_tauTA = pks[str(i+1)]['e(g_1,g_2)^{tau^T A}']
+            C_ = C_ * self.math.power_mul(e_gh_tauTA, vec_s, type = 'v_vector')
+
+        C = {'C_0': C_0, 'C_i': C_i, 'C':C_}
+        return C, vec_s
     
+
     def _gen_pk_sk(self, pp):
-        k = self._assump_size
-        group = self._group
+        k = self.assump_size
+        group = self.group
 
         g = pp['g_1']
         h = pp['g_2']
@@ -128,22 +166,19 @@ class PH_ABE(ABEnc):
         sk = {'X': X, 'tau': tau, 'sigma': sigma}
         return pk, sk
     
-    def keygen(self, pp, sks, vec_v):
-        k = self._assump_size
+    # @todo, g_2^h not real implemented
+    def keygen(self, pp, sks, vec_v, ad = -1):
+        k = self.assump_size
         g2 = pp['g_2']
-        n = self._n
+        n = self.n
 
         mus,h, _ = self._gen_mus()
-        # mu_list = []
-        # for i in range(n):
-        #     mu_list.append(mus[str(i+1)])
-        # print (vrf_mus(mu_list, k))
-
         K = {}
 
         for i in range(n):
-            #pk = pks[str(i+1)]
             sk = sks[str(i+1)]
+            #pk = pks[str(i+1)]
+
             v = vec_v[i]
             mu = mus[str(i+1)]
 
@@ -151,7 +186,9 @@ class PH_ABE(ABEnc):
             X = sk['X']
             tau = sk['tau']
 
-            tmp = self._math.mul_matrices(X, h)
+        
+
+            tmp = self.math.mul_matrices(X, h)
             #print (len(mu))
             exponent = [x - v * y for x,y in zip(tau, tmp)]
             exponent = [x + y for x,y in zip(exponent, mu)]
@@ -163,60 +200,14 @@ class PH_ABE(ABEnc):
 
             K[str(i+1)] = K_i
             #print (len(h))
-            K['g_2^h'] = [g2 ** ele for ele in h]
+
+        K['g_2^h'] = [g2 ** ele for ele in h]
 
         return K
     
-    def encrypt(self, pp, pks, vec_x, M):
-        k = self._assump_size
-        group = self._group
-        n = len(pks)
-
-        g = pp['g_1']
-        h = pp['g_2']
-        e_gh = pp['e_g1_g2']
-        g_A = pp['g_1^A']
-        g_UTA = pp['g_1^{U^T A}']
-
-        vec_s = []
-        for i in range(k):
-            vec_s.append(group.random(ZR))
-
-        #print (vec_x)
-
-        C_0 = []
-        for i in range(k):
-            C_0.append(g_A[i] ** vec_s[i])
-        C_0.append(g ** sum(vec_s))
-        #C_0 = power_mul(g_A, vec_s, type='vector')
-
-        C_i = []
-        for i in range(n):
-            g_XTA = pks[str(i+1)]['g_1^{X^T A}']
-            g_UTAs = self._math.power_mul(g_UTA, vec_s, type='m_vector')
-            
-            if vec_x[i] != 0:
-                tmp = self._math.power_mul(g_UTAs, vec_x[i], type = 'v_scalar')
-            else:
-                tmp = [1] * (k+1)
-                
-            tmp2 = self._math.power_mul(g_XTA, vec_s, type = 'm_vector')
-            #print (len(tmp), len(tmp2))
-            C_i.append([x * y for x,y in zip(tmp, tmp2)])
-
-        C_ = M
-        #print (M)
-        for i in range(n):
-            e_gh_tauTA = pks[str(i+1)]['e(g_1,g_2)^{tau^T A}']
-            #print (e_gh_tauTA)
-            C_ = C_ * self._math.power_mul(e_gh_tauTA, vec_s, type = 'v_vector')
-
-        C = {'C_0': C_0, 'C_i': C_i, 'C':C_}
-        return C, vec_s
-    
     def decrypt(self, K, C, vec_v, pp):
         H = K['g_2^h']
-        group = self._group
+        group = self.group
 
         g1 = pp['g_1']
         g2 = pp['g_2']
@@ -228,7 +219,7 @@ class PH_ABE(ABEnc):
         K_ = K['1']
         C_ = C_i_s[-1]
         #print (len(C_))
-        for i in range(1, self._n):
+        for i in range(1, self.n):
             K_ = [x * y for x,y in zip(K_, K[str(i+1)])]
 
             if vec_v[i-1]:
@@ -250,11 +241,11 @@ class PH_ABE(ABEnc):
         return ciphertext/rst
     
     # n refers to number of AA here
-    # Generate a random oracl that only return constant value for each AA_i
+    # Generate a random oracle that only return constant value for each AA_i
     # @update: Use group.hash(), maps to Z_p^{k+1}
     def _rand_oracle(self, n, k):
-        group = self._group
-
+        group = self.group
+        
         H = {}
         for i in range(n):
             for j in range(i, n):
@@ -263,7 +254,7 @@ class PH_ABE(ABEnc):
         return H
     
     def _gen_Z_p(self, k):
-        group = self._group
+        group = self.group
         vec = []
         if k == 1:
             return group.random(ZR)
@@ -274,8 +265,8 @@ class PH_ABE(ABEnc):
         return vec
     
     def _gen_mu_i(self, i, n, H):
-        group = self._group
-        k = self._assump_size
+        group = self.group
+        k = self.assump_size
 
         mu = [0] * (k+1)
         for j in range(1, i):
@@ -289,10 +280,10 @@ class PH_ABE(ABEnc):
 
         return mu
 
-    def _gen_mus(self):
-        group = self._group
-        n = self._n
-        k = self._assump_size
+    def _gen_mus(self, GID, vec_v):
+        group = self.group
+        n = self.n
+        k = self.assump_size
         mus = {}
 
         H = self._rand_oracle(n,k)
@@ -302,8 +293,10 @@ class PH_ABE(ABEnc):
             mus[str(i+1)] = self._gen_mu_i(i+1,n,H)
         
         for i in range(k+1):
+            # @todo: use group.hash()
             h.append(group.random(ZR))
         
+
         return mus, h, H
     
 
@@ -445,7 +438,7 @@ if __name__ == "__main__":
     ph_abe = PH_ABE(n, assump_size, group, math_lib)
 
     pp, msk = ph_abe.setup()
-    attributes = Inner_Product(group)
+    attributes = X_V(group)
     vec_x, vec_v = attributes.gen_x_v(n, assump_size)
 
     pks, sks = ph_abe.auth_setup(pp)
@@ -455,7 +448,7 @@ if __name__ == "__main__":
     K = ph_abe.keygen(pp, sks, vec_v)
 
     M = group.random(GT)
-    print ('M:', M)
+    print ('M: ', M)
     C,vec_s = ph_abe.encrypt(pp, pks, vec_x, M)
 
     M_ = ph_abe.decrypt(K, C, vec_v, pp)
