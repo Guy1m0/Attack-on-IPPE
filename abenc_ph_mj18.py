@@ -280,7 +280,7 @@ class PH_ABE(ABEnc):
 
         return mu
 
-    def _gen_mus(self, GID, vec_v):
+    def _gen_mus(self):
         group = self.group
         n = self.n
         k = self.assump_size
