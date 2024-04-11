@@ -119,19 +119,3 @@ class NIZK():
         c = self.group.hash(hash_input, ZR)
 
         return rps.A ** u == R * (rps.B ** c)
-
-
-
-
-class s_pair:
-    def __init__(self, s, A, group, B = None):
-        self.s = s
-        if B :
-             self.B = B
-        else :
-            self.B = A ** s
-        self.A = A
-        self.group = group
-
-    def getA(self):
-        return self.A
