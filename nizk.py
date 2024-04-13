@@ -4,7 +4,7 @@ class NIZK():
     def __init__(self, group):
         self.group = group
 
-    def commit(self, rps, h):
+    def prove(self, rps, h):
         a = self.group.random(ZR)
         R = rps.A ** a
         #print (a, R)
@@ -15,7 +15,7 @@ class NIZK():
         u = a + c * rps.s
         return R, u
       
-    def commit_pk(self, pp, pk, sk):
+    def prove_pk(self, pp, pk, sk):
         g_A = pp['g_1^A']
         e_gh = pp['e_g1_g2']
         k = len(g_A)
@@ -101,14 +101,14 @@ class NIZK():
                 eq1 = g_A[j2]**pis['X']['u'][j2][j1] * pp['g_1'] ** pis['X']['u'][k][j1]
                 eq2 = (s_pairs['X']['B'][j1][j2] ** c1) *  pis['X']['R'][j2] * pis['X']['R'][-1]
                 if eq1 != eq2:# * R[j1]:
-                    print ("False for X in index: ", j1, j2)
+                    #print ("False for X in index: ", j1, j2)
                     return False
                 
         for i in range(k):
             eq1 = s_pairs['tau']['A'][i] ** pis['tau']['u'][i] * e_gh ** pis['tau']['u'][k]
             eq2 = s_pairs['tau']['B'][i] ** c2 * pis['tau']['R'][i] * pis['tau']['R'][k]
             if eq1 != eq2:
-                print ("False for tau in index:", i)
+                #print ("False for tau in index:", i)
                 return False
             
         return s_pairs['sig']['A'] ** pis['sig']['u'] == pis['sig']['R'] * (s_pairs['sig']['B'] ** c3)
