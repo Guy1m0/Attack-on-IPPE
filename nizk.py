@@ -44,14 +44,15 @@ class NIZK():
         R3 = A3 ** a3
         s3 = sk['sigma']
 
-        h_x = self.group.hash([A1,B1], ZR)
-        h_tau = self.group.hash([A2,B2], ZR)
-        h_sig = self.group.hash([A3,B3], ZR)
+        h_x = self.group.hash(str(A1)+str(B1), ZR)
+        h_tau = self.group.hash(str(A2)+str(B2), ZR)
+        h_sig = self.group.hash(str(A3)+str(B3), ZR)
         h = h_x * h_tau * h_sig
 
-        hash_inputs.append(str(h) + str(h_x))
-        hash_inputs.append(str(h) + str(h_tau))
-        hash_inputs.append(str(h) + str(h_sig))
+        hash_inputs.append(str(R1) + str(h) + str(h_x))
+        hash_inputs.append(str(R2) + str(h) + str(h_tau))
+        hash_inputs.append(str(R3) + str(h) + str(h_sig))
+        #print ("inputs:", hash_inputs)
 
         c1 = self.group.hash(hash_inputs[0], ZR)
         c2 = self.group.hash(hash_inputs[1], ZR)
@@ -83,14 +84,15 @@ class NIZK():
         k = len(g_A)
         hash_inputs = []
 
-        h_x = self.group.hash([s_pairs['X']['A'], s_pairs['X']['B']], ZR)
-        h_tau = self.group.hash([s_pairs['tau']['A'], s_pairs['tau']['B']], ZR)
-        h_sig = self.group.hash([s_pairs['sig']['A'], s_pairs['sig']['B']], ZR)
+        h_x = self.group.hash(str(s_pairs['X']['A'])+ str(s_pairs['X']['B']), ZR)
+        h_tau = self.group.hash(str(s_pairs['tau']['A']) + str(s_pairs['tau']['B']), ZR)
+        h_sig = self.group.hash(str(s_pairs['sig']['A'])+str(s_pairs['sig']['B']), ZR)
         h = h_x * h_tau * h_sig
+        #print (h * h_x)
 
-        hash_inputs.append(str(h) + str(h_x))
-        hash_inputs.append(str(h) + str(h_tau))
-        hash_inputs.append(str(h) + str(h_sig))
+        hash_inputs.append(str(pis['X']['R']) + str(h) + str(h_x))
+        hash_inputs.append(str(pis['tau']['R']) +str(h) + str(h_tau))
+        hash_inputs.append(str(pis['sig']['R']) +str(h) + str(h_sig))
 
         c1 = self.group.hash(hash_inputs[0], ZR)
         c2 = self.group.hash(hash_inputs[1], ZR)
