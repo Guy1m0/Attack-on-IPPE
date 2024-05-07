@@ -8,6 +8,7 @@ from collections import defaultdict
 import time
 import matplotlib.pyplot as plt
 import numpy as np
+from charm.toolbox.pairinggroup import ZR
 
 class Benchmark():
     def __init__(self, group):
@@ -16,7 +17,7 @@ class Benchmark():
     def benchmark_scheme(self, assump_size, list_n, datasets):
         k = assump_size
         group = self.group
-        result = []
+        # result = []
         math_lib = mat_math()
         if not datasets[str(k)]:
             datasets[str(k)] = defaultdict(str)
@@ -72,8 +73,9 @@ class Benchmark():
 
             # Key Gen
             start_time = time.time()
+            GID = group.random(ZR)
             vec_x, vec_v = attributes.gen_x_v(n, assump_size)
-            K = ph_abe.keygen(pp, sks, vec_v)
+            K = ph_abe.keygen(pp, pks, sks, GID, vec_v)
             elapsed_time = time.time() - start_time
             data['keygen'] = elapsed_time
             data['total'] += elapsed_time
@@ -90,7 +92,8 @@ class Benchmark():
 
             # AD KeyGen
             start_time = time.time()
-            K_ = ph_abe.keygen(pp, sks, ad_vec_v)
+            GID_ad = group.random(ZR)
+            K_ = ph_abe.keygen(pp, pks, sks, GID_ad, ad_vec_v)
             elapsed_time = time.time() - start_time
             data['ad_keygen'] = elapsed_time
             #print ("Adv's keyGen: ", elapsed_time)

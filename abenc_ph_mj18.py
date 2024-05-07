@@ -121,6 +121,9 @@ class PH_ABE(ABEnc):
         C = {'C_0': C_0, 'C_i': C_i, 'C':C_}
         return C, vec_s
     
+    def _H(self, GID, v, i):
+        k = self.assump_size
+        group = self.group
 
     def _gen_pk_sk(self, pp):
         k = self.assump_size
@@ -167,12 +170,12 @@ class PH_ABE(ABEnc):
         return pk, sk
     
     # @todo, g_2^h not real implemented
-    def keygen(self, pp, sks, vec_v, ad = -1):
+    def keygen(self, pp, pks, sks, GID, vec_v, ad = -1):
         k = self.assump_size
         g2 = pp['g_2']
         n = self.n
 
-        mus,h, _ = self._gen_mus()
+        mus,h = self._gen_mus(pks, sks, GID, vec_v)
         K = {}
 
         for i in range(n):
@@ -185,8 +188,6 @@ class PH_ABE(ABEnc):
 
             X = sk['X']
             tau = sk['tau']
-
-        
 
             tmp = self.math.mul_matrices(X, h)
             #print (len(mu))
@@ -253,6 +254,17 @@ class PH_ABE(ABEnc):
         
         return H
     
+    # \mathcal{H}
+    def _oracle(self, y_, GID, vec_v):
+        group = self.group
+        k = self.assump_size
+        out = []
+        for i in range(k+1):
+            out.append(group.hash(str(y_)+str(GID)+str(vec_v)+str(i), ZR))
+
+        return out
+
+    
     def _gen_Z_p(self, k):
         group = self.group
         vec = []
@@ -280,24 +292,49 @@ class PH_ABE(ABEnc):
 
         return mu
 
-    def _gen_mus(self):
+    def _gen_mus(self, pks, sks, GID, vec_v):
         group = self.group
         n = self.n
         k = self.assump_size
         mus = {}
 
-        H = self._rand_oracle(n,k)
+        mu_sum = [0] * (k+1)
+
+        # H = self._rand_oracle(n,k)
         h = []
+        ys = [pks[str(j+1)]['y'] for j in range(n)]
 
         for i in range(n):
-            mus[str(i+1)] = self._gen_mu_i(i+1,n,H)
+            sk = sks[str(i+1)]
+            mu_i = [0] * (k+1)
+            Hs_1 = [self._oracle(ys[j]**sk['sigma'], GID, vec_v) for j in range(i)]
+            for vector in Hs_1:
+                for j in range(k+1):
+                    #print (vector[j])
+                    mu_i[j] += vector[j]
+
+            Hs_2 = [self._oracle(ys[j]**sk['sigma'], GID, vec_v) for j in range(i+1,n)]
+            for vector in Hs_2:
+                for j in range(k+1):
+                    mu_i[j] -= vector[j]
+            
+            # print ("Hs_1:", len(Hs_1), "Hs_2:", len(Hs_2))
+            # tmp = self._gen_mu_i(i+1, n, H)
+            # for j in range(k+1):
+            #     # mu_sum[j] += tmp[j]
+            #     mu_sum[j] += mu_i[j]
+
+            # print ("i:",i,"mu:",mu_i)
+            # print (self._gen_mu_i(i+1, n, H))
+            mus[str(i+1)] = mu_i
         
+        # print (mu_sum)
+
         for i in range(k+1):
             # @todo: use group.hash()
-            h.append(group.random(ZR))
+            h.append(group.hash(str(GID)+str(vec_v)+str(i), ZR))
         
-
-        return mus, h, H
+        return mus, h
     
 
 class Inner_Product:
@@ -436,21 +473,23 @@ if __name__ == "__main__":
     math_lib = mat_math()
 
     ph_abe = PH_ABE(n, assump_size, group, math_lib)
+    attributes = Inner_Product(group)
 
+    # Sys & Auth Setup
     pp, msk = ph_abe.setup()
-    attributes = X_V(group)
-    vec_x, vec_v = attributes.gen_x_v(n, assump_size)
-
     pks, sks = ph_abe.auth_setup(pp)
-    #print (sks)
 
+    # Key Gen
+    GID = group.random(ZR)
+    vec_x, vec_v = attributes.gen_x_v(n, assump_size)
     print ('Authorized list: ', vec_v)
-    K = ph_abe.keygen(pp, sks, vec_v)
+    K = ph_abe.keygen(pp, pks, sks, GID, vec_v)
 
+    # Encryption
     M = group.random(GT)
     print ('M: ', M)
     C,vec_s = ph_abe.encrypt(pp, pks, vec_x, M)
 
+    # Decryption
     M_ = ph_abe.decrypt(K, C, vec_v, pp)
-
     print ('M_:', M_)
