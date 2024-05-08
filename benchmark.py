@@ -49,7 +49,17 @@ class Benchmark():
             elapsed_time = time.time() - start_time
             data['auth'] = elapsed_time
             data['total'] += elapsed_time
-            print ("Each AA's setup: ", elapsed_time/n)
+
+            # Key Gen
+            start_time = time.time()
+            GID = group.random(ZR)
+            vec_x, vec_v = attributes.gen_x_v(n, assump_size)
+            K = ph_abe.keygen(pp, pks, sks, GID, vec_v)
+            elapsed_time = time.time() - start_time
+            data['keygen'] = elapsed_time
+            data['total'] += elapsed_time
+
+            print ("Each AA's cost: ", data['auth']/n + elapsed_time/n)
 
             # Worst Case
             start_time = time.time()
@@ -71,14 +81,7 @@ class Benchmark():
             data['verify'] = elapsed_time
             #print ("Verification time: ", elapsed_time)
 
-            # Key Gen
-            start_time = time.time()
-            GID = group.random(ZR)
-            vec_x, vec_v = attributes.gen_x_v(n, assump_size)
-            K = ph_abe.keygen(pp, pks, sks, GID, vec_v)
-            elapsed_time = time.time() - start_time
-            data['keygen'] = elapsed_time
-            data['total'] += elapsed_time
+
             #print ("user key_gen: ", elapsed_time)
 
             # AD's setup
@@ -118,16 +121,19 @@ class Benchmark():
             data['total'] += elapsed_time
 
             # AD decrypt
+            tmp = ph_abe.decrypt(K_, C, ad_vec_v, pp)
+
             start_time = time.time()
             omega = att.gen_omega(K_,C)
-            M_ = ph_abe.decrypt(K_, C, ad_vec_v, pp) * math_lib.prod(omega)
+            M_ =  tmp * math_lib.prod(omega)
             if M_ != M:
                 print ('Error in decrypt M (adv): ', M_)
             elapsed_time = time.time() - start_time
-            data['ad_decrypt'] = elapsed_time
-            print ("Adv's total cost: ", data['ad_setup'] + data['ad_keygen'] + data['ad_decrypt'])
+            data['ad_cancel_out'] = elapsed_time
+            print ("Adv's extra cost: ", data['ad_setup'] + data['ad_cancel_out'])
 
-            #print ("Total cost: ", data['total'])
+            print ("Total cost: ", data['total'])
+            print ("Total NIZK cost: ", data['prove'] + data['verify'])
             datasets[str(k)]['n']=data
             datasets[str(k)]['seq'].append(data)
 
