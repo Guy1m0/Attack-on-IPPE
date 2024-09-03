@@ -2,7 +2,8 @@ from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair
 from charm.toolbox.ABEnc import ABEnc
 from charm.toolbox.msp import MSP
 
-import random
+
+import random,time
 
 class PH_ABE(ABEnc):
 
@@ -171,14 +172,18 @@ class PH_ABE(ABEnc):
     
     # @todo, g_2^h not real implemented
     def keygen(self, pp, pks, sks, GID, vec_v, ad = -1):
+        start_time = time.time()
         k = self.assump_size
         g2 = pp['g_2']
         n = self.n
 
         mus,h = self._gen_mus(pks, sks, GID, vec_v)
         K = {}
+        elapsed_time = 0
+        mu_gen_time = (time.time() - start_time)/n
 
         for i in range(n):
+            start_time = time.time()
             sk = sks[str(i+1)]
             #pk = pks[str(i+1)]
 
@@ -200,13 +205,16 @@ class PH_ABE(ABEnc):
                 K_i.append(g2 ** exponent[j])
 
             K[str(i+1)] = K_i
+            if i == ad-1:
+                elapsed_time = time.time() - start_time + mu_gen_time
             #print (len(h))
 
         K['g_2^h'] = [g2 ** ele for ele in h]
 
-        return K
+        return K, elapsed_time
     
     def decrypt(self, K, C, vec_v, pp):
+        #start_time = time.time()
         H = K['g_2^h']
         group = self.group
 
@@ -239,6 +247,7 @@ class PH_ABE(ABEnc):
             rst = rst * e_gh_C_0[i] * e_gh_C_i[i]
         #print (rst)
         #return rst
+        #print ("elapsed time:", time.time() - start_time)
         return ciphertext/rst
     
     # n refers to number of AA here
@@ -483,7 +492,7 @@ if __name__ == "__main__":
     GID = group.random(ZR)
     vec_x, vec_v = attributes.gen_x_v(n, assump_size)
     print ('Authorized list: ', vec_v)
-    K = ph_abe.keygen(pp, pks, sks, GID, vec_v)
+    K, ad_time = ph_abe.keygen(pp, pks, sks, GID, vec_v)
 
     # Encryption
     M = group.random(GT)

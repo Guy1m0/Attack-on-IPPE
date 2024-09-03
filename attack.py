@@ -2,7 +2,6 @@ from abenc_ph_mj18 import PH_ABE, mat_math, Inner_Product
 from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair
 from charm.toolbox.ABEnc import ABEnc
 from nizk import NIZK
-import time
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -32,6 +31,31 @@ class RogueKeyAtt():
         pk['g_1^{X^T A}'] = pk_ad
         pks[str(ad_index)] = pk
         return pks
+    
+    # def keygen_update(self, pp, sks, vec_v, mus, h, ad_index, K):
+    #     k = self.assump_size
+    #     g2 = pp['g_2']
+
+    #     sk = sks[str(ad_index+1)]
+    #     v = vec_v[ad_index]
+    #     mu = mus[str(ad_index+1)]
+
+    #     X = sk['X']
+    #     tau = sk['tau']
+
+    #     tmp = self.math.mul_matrices(X, h)
+    #     #print (len(mu))
+    #     exponent = [x - v * y for x,y in zip(tau, tmp)]
+    #     exponent = [x + y for x,y in zip(exponent, mu)]
+    
+    #     K_i = []
+    #     #print (len(exponent))
+    #     for j in range(k+1):
+    #         K_i.append(g2 ** exponent[j])
+
+    #     K[str(ad_index+1)] = K_i
+    #     return K
+
     
     def gen_omega(self, K, C):
         n = self.n

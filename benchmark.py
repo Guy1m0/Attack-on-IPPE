@@ -53,13 +53,14 @@ class Benchmark():
             # Key Gen
             start_time = time.time()
             GID = group.random(ZR)
+
             vec_x, vec_v = attributes.gen_x_v(n, assump_size)
-            K = ph_abe.keygen(pp, pks, sks, GID, vec_v)
+            K, _ = ph_abe.keygen(pp, pks, sks, GID, vec_v)
             elapsed_time = time.time() - start_time
             data['keygen'] = elapsed_time
             data['total'] += elapsed_time
 
-            print ("Each AA's cost: ", data['auth']/n + elapsed_time/n)
+            print ("AA's cost: ", data['auth']/n + elapsed_time/n)
 
             # Worst Case
             start_time = time.time()
@@ -76,7 +77,7 @@ class Benchmark():
                     print ("Check not pass for AA:", str(i+1))
                     break
             tmp = time.time()
-            print ("Each AA's extra cost: ", elapsed_time/n + tmp - start_time)
+            print ("AA's extra cost: ", elapsed_time/n + tmp - start_time)
             elapsed_time = tmp - start_time
             data['verify'] = elapsed_time
             #print ("Verification time: ", elapsed_time)
@@ -87,6 +88,7 @@ class Benchmark():
             # AD's setup
             start_time = time.time()
             ad = vec_v.index(0) + 1
+            #print ("AD:", ad)
             ad_vec_v = [0] * (n-1) + [1]
             pks = att.pks_update(ad, pks)
             elapsed_time = time.time() - start_time
@@ -94,12 +96,14 @@ class Benchmark():
             #print ("Adv's setup: ", elapsed_time)
 
             # AD KeyGen
-            start_time = time.time()
+            #start_time = time.time()
             GID_ad = group.random(ZR)
-            K_ = ph_abe.keygen(pp, pks, sks, GID_ad, ad_vec_v)
-            elapsed_time = time.time() - start_time
-            data['ad_keygen'] = elapsed_time
-            #print ("Adv's keyGen: ", elapsed_time)
+            K_,ad_key_gen = ph_abe.keygen(pp, pks, sks, GID_ad, ad_vec_v, ad=ad)
+            #print ("For ad with index: ", ad, "takes :", ad_key_gen)
+
+            #elapsed_time = time.time() - start_time
+            data['ad_keygen'] = ad_key_gen
+            #print ("Ad's cost: ", data['ad_setup'] + )
 
             # Encryption
             start_time = time.time()
@@ -107,7 +111,7 @@ class Benchmark():
             #print ('M:', M)
             C, vec_s = ph_abe.encrypt(pp, pks, vec_x, M)
             elapsed_time = time.time() - start_time
-            #print (elapsed_time)
+            print ("DO's cost: ", elapsed_time)
             data['encrypt'] = elapsed_time
             data['total'] += elapsed_time
 
@@ -117,6 +121,7 @@ class Benchmark():
             if M_ != M:
                 print ('Error in decrypt M (usr): ', M_)
             elapsed_time = time.time() - start_time
+            print ("DU's cost: ", elapsed_time)
             data['decrypt'] = elapsed_time
             data['total'] += elapsed_time
 
@@ -130,10 +135,11 @@ class Benchmark():
                 print ('Error in decrypt M (adv): ', M_)
             elapsed_time = time.time() - start_time
             data['ad_cancel_out'] = elapsed_time
-            print ("Adv's extra cost: ", data['ad_setup'] + data['ad_cancel_out'])
+            print ("Ad's cost: ", data['ad_setup'] + data['ad_keygen'] + data['ad_cancel_out'])
 
-            print ("Total cost: ", data['total'])
-            print ("Total NIZK cost: ", data['prove'] + data['verify'])
+            print ("Original Sys cost: ", data['total'])
+            print ("Enhanced Sys cost: ", data['total'] + data['prove'] + data['verify'])
+
             datasets[str(k)]['n']=data
             datasets[str(k)]['seq'].append(data)
 
