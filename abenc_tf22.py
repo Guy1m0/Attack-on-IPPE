@@ -36,33 +36,7 @@ class DIPE_ABE(ABEnc):
             pks[str(i+1)] = pk
             sks[str(i+1)] = sk
 
-        return pks, sks            
-
-
-    def keygen(self, pp, pks, sks, GID, vec_x):
-        n = self.n
-        l = n - 1
-
-        vec_x_str = self._vec2str(vec_x)
-        D0 = self.group.hash(str(GID)+vec_x_str, G1)
-        K = {}
-
-        for i in range(n):
-            sk = sks[str(i+1)]
-            g_ala = sk['g^ala']
-            alaphas = sk['alaphas']
-
-            D1 = g_ala * D0 ** alaphas[0]
-            Ki = []
-
-            for j in range(1, l): #2 to l
-                tmp = -vec_x[j]/vec_x[0] * alaphas[1]
-                k_tmp = D0 ** tmp * D0 ** alaphas[j]
-                Ki.append(k_tmp)
-
-            K[str(i+1)] = Ki
-
-        return K
+        return pks, sks        
 
 
     def _gen_pk_sk(self, pp):
@@ -88,6 +62,70 @@ class DIPE_ABE(ABEnc):
 
         return pk, sk
 
+    def encrypt(self, pp, pks, vec_y, M):
+        group = self.group
+        n = self.n
+        l = n-1
+
+        s = group.random(ZR)
+
+        tmp_E0 = 1
+        E1 = 1
+        for i in range(n):
+            pk = pks[str(i+1)]
+            g_alaphas = pk['g^alapha']
+
+            tmp_E0 = tmp_E0 * pk['Z']
+            E1 = E1 * g_alaphas[0]
+
+        E0 = M * tmp_E0
+
+        for j in range(l):
+            tmp_E1 = 1
+            for i in range(n):
+                pk = pks[str(i+1)]
+                g_alaphas = pk['g^alapha']
+
+                tmp_E1 = tmp_E1 * g_alaphas[j+1]
+
+            E1 = E1 * tmp_E1 ** vec_y[j]
+
+        E1 = E1 ** s
+
+        E2 = pp['g']**s
+        C = {'E0':E0, 'E1':E1, 'E2':E2}
+        
+        return C
+
+
+
+    def keygen(self, pp, pks, sks, GID, vec_x):
+        n = self.n
+        l = n - 1
+
+        vec_v_str = self._vec2str(vec_x)
+        D0 = self.group.hash(str(GID)+vec_v_str, G1)
+        K = {}
+        D1 = {}
+
+        for i in range(n):
+            sk = sks[str(i+1)]
+            g_ala = sk['g^ala']
+            alaphas = sk['alaphas']
+
+            D1i = g_ala * D0 ** alaphas[0]
+
+            Ki = []
+            for j in range(1, l): #2 to l
+                tmp = -vec_x[j]/vec_x[0] * alaphas[1]
+                k_tmp = D0 ** tmp * D0 ** alaphas[j]
+                Ki.append(k_tmp)
+
+            K[str(i+1)] = Ki
+            D1[str(i+1)] = D1i
+
+        return D0, D1, K
+
 
     def _vec2str(self, vec):
         vec_str = ""
@@ -95,3 +133,30 @@ class DIPE_ABE(ABEnc):
             vec_str += str(v)
 
         return vec_str
+    
+
+    def decrypt(self, D0, D1, K, C, vec_y):
+        group = self.group
+        n = self.n
+        l = n-1
+
+        pi_D = 1
+        for i in range(n):
+            
+            pi_D = pi_D * D1[str(i+1)]
+
+        tmp = pi_D
+        for j in range(1,l):
+            pi_K = 1
+            for i in range(n):
+                pi_K = pi_K * K[str(i+1)][j-1]
+
+            pi_K ** vec_y[j]
+
+            tmp = tmp*pi_K
+
+        upper = pair(tmp, C['E2'])
+        lower = pair(C['E1'], D0)
+
+        return C['E0'] * lower / upper
+
