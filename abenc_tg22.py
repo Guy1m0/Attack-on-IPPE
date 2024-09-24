@@ -157,7 +157,7 @@ class DIPE_ABE(ABEnc):
 
         return C['E0'] * lower / upper
 
-class Inner_Product:
+class Inner_Product_TG22:
     def __init__(self, group):
         self._group = group
 
