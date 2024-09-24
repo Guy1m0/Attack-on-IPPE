@@ -7,22 +7,16 @@ import random,time
 
 class DIPE_ABE(ABEnc):
 
-    def __init__(self, n, assump_size, group_obj, math):
+    def __init__(self, n, group_obj):
         ABEnc.__init__(self)
         self.group = group_obj
         self.n = n
-        self.assump_size = assump_size
-        self.math = math
 
     def setup(self):
-        k = self.assump_size
         group = self.group
-
         g = group.random(G1)
 
-
         pp = {'g':g}
-
         return pp
     
     def auth_setup(self, pp):
@@ -40,25 +34,25 @@ class DIPE_ABE(ABEnc):
 
 
     def _gen_pk_sk(self, pp):
-        k = self.assump_size
         group = self.group
         n = self.n
         l = n-1
 
         g = pp['g']
-        ala = group.random(ZR)
+        ala_hat = group.random(ZR)
+        ala_0 = group.random(ZR)
         alaphas = []
         g_alaphas = []
 
-        for i in range(l + 1):
+        for i in range(l):
             tmp = group.random(ZR)
             alaphas.append(tmp)
             g_alaphas.append(g ** tmp)
 
-        g_ala = g**ala
+        g_ala_hat = g**ala_hat
 
-        pk = {'g^alapha': g_alaphas, 'Z':pair(g,g_ala)}
-        sk = {'g^ala': g_ala, 'alaphas': alaphas}
+        pk = {'g^ala_0':g ** ala_0,'g^alaphas': g_alaphas, 'Z':pair(g,g_ala_hat)}
+        sk = {'g^ala_hat': g_ala_hat, 'ala_0':ala_0,'alaphas': alaphas}
 
         return pk, sk
 
@@ -73,20 +67,21 @@ class DIPE_ABE(ABEnc):
         E1 = 1
         for i in range(n):
             pk = pks[str(i+1)]
-            g_alaphas = pk['g^alapha']
+            #g_alaphas = pk['g^alaphas']
+            g_ala_0 = pk['g^ala_0']
 
             tmp_E0 = tmp_E0 * pk['Z']
-            E1 = E1 * g_alaphas[0]
+            E1 = E1 * g_ala_0
 
-        E0 = M * tmp_E0
+        E0 = M * tmp_E0**s
 
-        for j in range(l):
+        for j in range(1,l):
             tmp_E1 = 1
             for i in range(n):
                 pk = pks[str(i+1)]
-                g_alaphas = pk['g^alapha']
+                g_alaphas = pk['g^alaphas']
 
-                tmp_E1 = tmp_E1 * g_alaphas[j+1]
+                tmp_E1 = tmp_E1 * g_alaphas[j-1]
 
             E1 = E1 * tmp_E1 ** vec_y[j]
 
@@ -99,26 +94,28 @@ class DIPE_ABE(ABEnc):
 
 
 
-    def keygen(self, pp, pks, sks, GID, vec_x):
+    def keygen(self, pp, sks, GID, vec_x):
         n = self.n
         l = n - 1
 
         vec_v_str = self._vec2str(vec_x)
         D0 = self.group.hash(str(GID)+vec_v_str, G1)
+
         K = {}
         D1 = {}
 
         for i in range(n):
             sk = sks[str(i+1)]
-            g_ala = sk['g^ala']
+            g_ala_hat = sk['g^ala_hat']
+            ala_0 = sk['ala_0']
             alaphas = sk['alaphas']
 
-            D1i = g_ala * D0 ** alaphas[0]
+            D1i = g_ala_hat * D0 ** ala_0
 
             Ki = []
             for j in range(1, l): #2 to l
-                tmp = -vec_x[j]/vec_x[0] * alaphas[1]
-                k_tmp = D0 ** tmp * D0 ** alaphas[j]
+                tmp = -vec_x[j]/vec_x[0] * alaphas[0]
+                k_tmp = D0 ** tmp * D0 ** alaphas[j-1]
                 Ki.append(k_tmp)
 
             K[str(i+1)] = Ki
@@ -160,3 +157,36 @@ class DIPE_ABE(ABEnc):
 
         return C['E0'] * lower / upper
 
+class Inner_Product:
+    def __init__(self, group):
+        self._group = group
+
+    #x1 not equals 0
+    def gen_x_y(self, n, authorized = []):
+        group = self._group
+        l = n - 1
+
+        if not authorized:
+            size = random.randint(1,n-2)
+            authorized = random.sample(range(n-1), size)
+
+        #print (authorized)
+        vec_x = []
+        for i in range(l):
+            vec_x.append(group.random(ZR))
+
+        vec_v = [0] * l 
+        tmp = 0
+        for index in authorized:
+            if index == authorized:
+                print ('incorrect index to be ', n)
+                continue
+
+            #vec_x[index] = group.random(ZR)
+            vec_v[index] = 1
+            tmp += vec_x[index]
+
+        vec_x[-1] = -tmp
+        vec_v[-1] = 1
+
+        return vec_x, vec_v
