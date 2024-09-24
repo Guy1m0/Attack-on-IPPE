@@ -41,6 +41,7 @@ class DIPE_ABE(ABEnc):
         g = pp['g']
         ala_hat = group.random(ZR)
         ala_0 = group.random(ZR)
+
         alaphas = []
         g_alaphas = []
 
@@ -75,13 +76,13 @@ class DIPE_ABE(ABEnc):
 
         E0 = M * tmp_E0**s
 
-        for j in range(1,l):
+        for j in range(l):
             tmp_E1 = 1
             for i in range(n):
                 pk = pks[str(i+1)]
                 g_alaphas = pk['g^alaphas']
 
-                tmp_E1 = tmp_E1 * g_alaphas[j-1]
+                tmp_E1 = tmp_E1 * g_alaphas[j]
 
             E1 = E1 * tmp_E1 ** vec_y[j]
 
@@ -106,6 +107,7 @@ class DIPE_ABE(ABEnc):
 
         for i in range(n):
             sk = sks[str(i+1)]
+
             g_ala_hat = sk['g^ala_hat']
             ala_0 = sk['ala_0']
             alaphas = sk['alaphas']
@@ -115,7 +117,7 @@ class DIPE_ABE(ABEnc):
             Ki = []
             for j in range(1, l): #2 to l
                 tmp = -vec_x[j]/vec_x[0] * alaphas[0]
-                k_tmp = D0 ** tmp * D0 ** alaphas[j-1]
+                k_tmp = D0 ** tmp * D0 ** alaphas[j]
                 Ki.append(k_tmp)
 
             K[str(i+1)] = Ki
@@ -168,7 +170,7 @@ class Inner_Product_TG22:
 
         if not authorized:
             size = random.randint(1,n-2)
-            authorized = random.sample(range(n-1), size)
+            authorized = random.sample(range(n-2), size)
 
         #print (authorized)
         vec_x = []
