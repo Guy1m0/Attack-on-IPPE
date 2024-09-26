@@ -150,7 +150,7 @@ class DIPE_ABE(ABEnc):
             for i in range(n):
                 pi_K = pi_K * K[str(i+1)][j-1]
 
-            pi_K ** vec_y[j]
+            pi_K = pi_K ** vec_y[j]
 
             tmp = tmp*pi_K
 
