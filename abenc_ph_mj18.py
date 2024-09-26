@@ -206,7 +206,7 @@ class PH_ABE(ABEnc):
 
             K[str(i+1)] = K_i
             if i == ad-1:
-                elapsed_time = time.time() - start_time + mu_gen_time
+                elapsed_time = time.time() - start_time# + mu_gen_time
             #print (len(h))
 
         K['g_2^h'] = [g2 ** ele for ele in h]
